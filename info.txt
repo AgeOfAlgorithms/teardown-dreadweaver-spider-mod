@@ -1,0 +1,6 @@
+name = Dreadweaver
+author = AgeOfAlgorithms and Claude
+description = Something is on the ceiling. The Dreadweaver, a man-sized spider with eight glowing red eyes, hunts you on any map. It crawls on floors, walls and ceilings, shoots a web line across open air and rides it, and spits webs that stick to whatever they hit: walk into one and you can barely move. It stalks in silence, watching from above and behind, and it talks: with Proximity Comms on, it calls to you in a human voice to draw you in. You only hear what it really sounds like once it comes for you. Shoot it and it bleeds green; hurt it badly and it runs for the dark, heals, and comes back. Set how many hunt in Options (1-3); the host can place more from the spawn menu.
+tags = Gameplay
+version = 2
+preview = preview_td.jpg
