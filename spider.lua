@@ -185,6 +185,48 @@ end
 
 ----- the registry API (any mod; PROJECT.md) -----
 
+-- The Villagers mod (villagers/mods/villagers/API.md): plain host registry keys, harmless when it is not running.
+-- The kind is described once; each living spider is a "thing" kept up to date twice a second.
+local VL_DOING = {roam = "crawling about", stalk = "creeping closer, watching", hunt = "hunting, charging",
+	retreat = "backing off into the dark", flee = "running away, hurt", hide = "lurking out of sight"}
+function dwVillagersInit()
+	SetString("villagers.kind.spider.name", "a giant spider")
+	SetString("villagers.kind.spider.feel", "fear")
+	SetString("villagers.kind.spider.feel.wren", "curious")
+	SetString("villagers.kind.spider.feel.bett", "disgust")
+	SetString("villagers.kind.spider.feel.brannoc", "hate")
+	SetString("villagers.kind.spider.note", "as big as a man, eight red eyes; crawls on walls and ceilings, spits sticky webs and bites")
+	SetFloat("villagers.kind.spider.danger", 0.8)
+	SetFloat("villagers.kind.spider.flee", 22)
+	SetString("villagers.kind.spider.doing", "crawling")
+	SetString("villagers.kind.spider.sound", "a dry skittering and clicking")
+	SetFloat("villagers.kind.spider.hear", 0)
+	dwVlThings = {}
+end
+
+function dwVillagersTick()
+	local now0 = {}
+	for _, s in ipairs(dwList) do
+		local k = "villagers.thing.dw" .. s.id .. "."
+		if s.alive then
+			now0[s.id] = true
+			SetString(k .. "kind", "spider")
+			SetFloat(k .. "x", s.pos[1]); SetFloat(k .. "y", s.pos[2]); SetFloat(k .. "z", s.pos[3])
+			SetString(k .. "doing", VL_DOING[s.state] or "crawling")
+			SetBool(k .. "hidden", s.state == "hide")
+			SetFloat(k .. "hear", (s.state == "hunt" or s.state == "flee" or s.state == "retreat") and 15 or 0)
+			SetBool(k .. "gone", false)
+		end
+	end
+	for id in pairs(dwVlThings) do
+		if not now0[id] then
+			SetBool("villagers.thing.dw" .. id .. ".gone", true)
+			dwVlThings[id] = nil
+		end
+	end
+	for id in pairs(now0) do dwVlThings[id] = true end
+end
+
 function dwPublishHitpoints()
 	local out = {}
 	for _, s in ipairs(dwList) do
@@ -1348,6 +1390,7 @@ function Spider.serverInit()
 	dwLo, dwHi = Vec(-200, -50, -200), Vec(200, 100, 200)
 	SetString("dreadweaver.hitpoints", "")
 	SetString("dreadweaver.damage", "")
+	dwVillagersInit()
 	local c = GetInt("savegame.mod.count")
 	if c < 1 then c = 1 end
 	DW_COUNT = math.min(3, c)
@@ -1475,6 +1518,7 @@ function Spider.serverTick(dt)
 	end
 	if sense then dwHeard, dwChat = nil, {} end
 	dwPublishHitpoints()
+	if math.floor(t * 2) ~= math.floor((t - dt) * 2) then dwVillagersTick() end
 	if t - dwMaskT > 0.25 then                                     -- players pass through the spiders' layer
 		dwMaskT = t
 		for _, p in ipairs(GetAllPlayers()) do
