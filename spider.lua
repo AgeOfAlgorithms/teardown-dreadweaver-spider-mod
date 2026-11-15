@@ -45,6 +45,7 @@ SMASH_REACH = 7               -- m: glass this near on the straight line to wher
 SMASH_R = 1.0                 -- m: the hole (soft materials only)
 CHEW_R = 1.3                  -- m: the bite out of a tree it is caught in (soft materials only)
 CHEW_LOOK = 1.6               -- m: leaves this near count as "in a tree"
+DW_GOLD = 200                 -- gold a killed one drops for the Inventory mod (option: 0 / 100 / 200 / 400)
 SPAWN_MARK_T = 7              -- s: a spawn-menu marker lies this long before the spider comes out of it
 dwMarkT0, dwMarks = {}, {}    -- marker body -> when first seen; {x, y, z, seconds left, ...} for the clients
 BITE_R = 1.8
@@ -326,7 +327,23 @@ function spDamage(s, d, kind, point)
 	end
 end
 
+-- gold for the McPuppet Inventory System: where it dies, on the ground below it, "x,y,z,amount" appended to
+-- inventory.dropgold (host). Nothing happens without that mod. The amount is an option (savegame.mod.gold, stored +1).
+function dwDropGold(s)
+	if not GetBool("inventory.present") then return end
+	local g = GetInt("savegame.mod.gold")
+	local amount = g > 0 and g - 1 or DW_GOLD
+	if amount <= 0 then return end
+	local at = VecCopy(s.pos)
+	local hit, d = dwRay(VecAdd(s.pos, Vec(0, 0.3, 0)), Vec(0, -1, 0), 30)
+	if hit then at = VecAdd(s.pos, Vec(0, 0.3 - d + 0.2, 0)) end
+	local cur = GetString("inventory.dropgold")
+	SetString("inventory.dropgold", (cur == "" and "" or cur .. " ") .. string.format("%.2f,%.2f,%.2f,%d", at[1], at[2], at[3], amount))
+	s.goldDropped = amount
+end
+
 function spDie(s)
+	if s.alive then dwDropGold(s) end
 	s.alive = false
 	s.state = "dead"
 	s.stateT = now()
