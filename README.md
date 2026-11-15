@@ -32,6 +32,9 @@ Shoot it (the head hurts most), blow it up, hit it with a sledge. It bleeds gree
 ## Multiplayer
 The host turns it on under Global mods. Each player's game draws the spider and its webs itself; the host runs the brain.
 
+## Villagers
+With the [AI Villagers](https://steamcommunity.com/sharedfiles/filedetails/?id=3840579200) mod running, the villagers are prey too: the Dreadweaver sees, stalks, webs and bites them just like players, and they see it, fear it and run (or fight back).
+
 ## For mod and map makers
 Your own weapons can hurt it through two registry strings on the host: **dreadweaver.hitpoints** (where its hit boxes are, written every tick) and **dreadweaver.damage** (append "x y z amount;" per hit).
 
