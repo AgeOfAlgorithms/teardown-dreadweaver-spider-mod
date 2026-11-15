@@ -6,6 +6,7 @@
 #include "spiderparts.lua"
 #include "spidersounds.lua"
 #include "snav.lua"
+#include "prey.lua"
 #include "webs.lua"
 #include "spider.lua"
 #include "lure.lua"

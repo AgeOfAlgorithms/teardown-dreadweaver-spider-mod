@@ -114,7 +114,7 @@ function dwGlass(shape, at, dir)
 	return false
 end
 
-function dwChest(p) return VecAdd(GetPlayerTransform(p).pos, Vec(0, 1.1, 0)) end
+function dwChest(p) return Prey.chest(p) end
 
 -- where a spider would stand for point p: on the surface next to it, else on what lies below it. Point, normal
 function dwGround(p)
@@ -193,9 +193,6 @@ local VL_DOING = {roam = "crawling about", stalk = "creeping closer, watching", 
 function dwVillagersInit()
 	SetString("villagers.kind.spider.name", "a giant spider")
 	SetString("villagers.kind.spider.feel", "fear")
-	SetString("villagers.kind.spider.feel.wren", "curious")
-	SetString("villagers.kind.spider.feel.bett", "disgust")
-	SetString("villagers.kind.spider.feel.brannoc", "hate")
 	SetString("villagers.kind.spider.note", "as big as a man, eight red eyes; crawls on walls and ceilings, spits sticky webs and bites")
 	SetFloat("villagers.kind.spider.danger", 0.8)
 	SetFloat("villagers.kind.spider.flee", 22)
@@ -303,11 +300,9 @@ function spDamage(s, d, kind, point)
 	if s.hp < DW_HP * 0.2 then chance = 1 end
 	-- whoever is nearest did it, as far as it knows
 	local best, bd = 0, 80
-	for _, q in ipairs(GetAllPlayers()) do
-		if GetPlayerHealth(q) > 0 then
-			local dd = dist(dwChest(q), s.pos)
-			if dd < bd then best, bd = q, dd end
-		end
+	for _, q in ipairs(Prey.all()) do
+		local dd = dist(Prey.chest(q), s.pos)
+		if dd < bd then best, bd = q, dd end
 	end
 	if best ~= 0 then
 		s.target = best
@@ -356,6 +351,26 @@ function spDie(s)
 	if not s.air and s.n[2] < 0.7 then                             -- (off a wall or a ceiling: it drops)
 		s.air = {kind = "fall", vel = VecScale(s.n, 1.5), t0 = now()}
 	end
+end
+
+-- villagers fighting back (the Villagers mod's villagers.strike ring): a punch hurts it a little
+function dwTakeStrikes()
+	if not GetBool("villagers.present") then return end
+	local last = GetInt("villagers.strike.last")
+	if dwStrikeSeen == nil or last < dwStrikeSeen then dwStrikeSeen = last end
+	for n = math.max(dwStrikeSeen + 1, last - 15), last do
+		local k = "villagers.strike." .. (n % 16) .. "."
+		local id = string.match(GetString(k .. "thing"), "^dw(%d+)$")
+		if id then
+			for _, s in ipairs(dwList) do
+				if s.alive and s.id == tonumber(id) then
+					local from = Vec(GetFloat(k .. "x"), GetFloat(k .. "y"), GetFloat(k .. "z"))
+					spDamage(s, math.max(2, GetFloat(k .. "amount") * 0.5), "villager", VecLerp(s.pos, from, 0.25))
+				end
+			end
+		end
+	end
+	dwStrikeSeen = last
 end
 
 function dwTakeHits()
@@ -413,8 +428,8 @@ function dwCandidate(lo, hi, minD)
 	local at = VecAdd(p, Vec(0, DW_RIDE - dd, 0))
 	if IsPointInWater(at) then return nil end
 	local score = 0
-	for _, q in ipairs(GetAllPlayers()) do
-		local e = GetPlayerEyeTransform(q).pos
+	for _, q in ipairs(Prey.all()) do
+		local e = Prey.eye(q).pos
 		local d = dist(e, at)
 		if d < minD then return nil end
 		if d < 70 and dwSee(e, at) then return nil end
@@ -484,8 +499,8 @@ function spHideSpot(s, from, minD, maxD)
 			if hit then
 				local at = VecAdd(p, Vec(0, DW_RIDE - d, 0))
 				local sc = 0
-				for _, q in ipairs(GetAllPlayers()) do
-					local e = GetPlayerEyeTransform(q).pos
+				for _, q in ipairs(Prey.all()) do
+					local e = Prey.eye(q).pos
 					sc = sc + math.min(60, dist(e, at)) * 0.2
 					if not dwSee(e, at) then sc = sc + 10 end
 				end
@@ -517,7 +532,7 @@ end
 
 -- a place to watch its prey from: a surface the prey's eye could see, preferably above and behind them, ring m away
 function spVantage(s, p, ring)
-	local eye = GetPlayerEyeTransform(p)
+	local eye = Prey.eye(p)
 	local back = TransformToParentVec(eye, Vec(0, 0, 1))
 	back = tangent(back, Vec(0, 1, 0)) or Vec(1, 0, 0)
 	local best, bs, bn = nil, -1e9, nil
@@ -551,11 +566,9 @@ end
 -- a goal it may wander to
 function spWanderGoal(s)
 	local best, bd = nil, 1e9
-	for _, p in ipairs(GetAllPlayers()) do
-		if GetPlayerHealth(p) > 0 then
-			local d = dist(dwChest(p), s.pos)
-			if d < bd then best, bd = p, d end
-		end
+	for _, p in ipairs(Prey.all()) do
+		local d = dist(dwChest(p), s.pos)
+		if d < bd then best, bd = p, d end
 	end
 	if best and math.random() < (s.far > 45 and 0.9 or 0.55) then    -- drawn to life
 		local c = dwChest(best)
@@ -599,13 +612,12 @@ function spSense(s)
 	end
 	local eye = VecAdd(s.pos, VecScale(s.n, 0.25))
 	local best, bestS, bestSaw = 0, 0, false
-	for _, p in ipairs(GetAllPlayers()) do
-		if GetPlayerHealth(p) > 0 then
+	for _, p in ipairs(Prey.all()) do
+		do
 			local c = dwChest(p)
 			local d = dist(c, s.pos)
 			local sc, saw = 0, false
-			local fl = GetFlashlight(p)
-			local lit = fl ~= 0 and IsLightActive(fl)
+			local lit = Prey.light(p)
 			if d < (lit and LIGHT_SIGHT or SIGHT) then                -- sight
 				local dir = VecScale(VecSub(c, eye), 1 / math.max(d, 0.01))
 				if (d < SIGHT_NEAR or VecDot(dir, s.fwd) > SIGHT_BACK) and dwSee(eye, c) then
@@ -615,7 +627,8 @@ function spSense(s)
 			if sc == 0 then                                           -- what it feels
 				if d < WEB_SENSE and Webs.level(p) > 0 then sc = 3      -- (its web trembles)
 				elseif d < TOUCH_SENSE then sc = 2.5
-				elseif d < MOVE_SENSE and vlen(GetPlayerVelocity(p)) > 2.5 then sc = 2 end
+				elseif d < MOVE_SENSE and vlen(Prey.vel(p)) > 2.5 then sc = 2
+				elseif d < Prey.noise(p) * HEAR_K * 0.5 then sc = 1.5 end      -- (a villager's noise: heard, as a sound is)
 			end
 			if sc > 0 then sc = sc + 1 / (1 + d) + (p == s.target and 0.3 or 0) end
 			if sc > bestS then best, bestS, bestSaw = p, sc, saw end
@@ -632,19 +645,19 @@ function spSense(s)
 		s.seeing = false
 	end
 	s.far = 1e9
-	for _, p in ipairs(GetAllPlayers()) do
-		if GetPlayerHealth(p) > 0 then s.far = math.min(s.far, dist(dwChest(p), s.pos)) end
+	for _, p in ipairs(Prey.all()) do
+		s.far = math.min(s.far, dist(dwChest(p), s.pos))
 	end
 end
 
 local function targetOk(s)
 	local p = s.target
-	return p ~= 0 and IsPlayerValid(p) and GetPlayerHealth(p) > 0
+	return p ~= 0 and Prey.ok(p)
 end
 
 -- is player p looking at it?
 local function lookedAt(s, p)
-	local eye = GetPlayerEyeTransform(p)
+	local eye = Prey.eye(p)
 	local v = VecSub(s.pos, eye.pos)
 	local d = vlen(v)
 	if d > 32 or d < 0.5 then return false end
@@ -674,7 +687,7 @@ function spThink(s, dts)
 				if s.seeing and d < 4 then go = true end
 				if Webs.level(p) > 0 and t - s.stateT > rnd(0.5, 2.5) then go = true end
 				if s.seeing and d < 8 and t - s.stateT > 20 then
-					local eye = GetPlayerEyeTransform(p)
+					local eye = Prey.eye(p)
 					if VecDot(VecNormalize(VecSub(s.pos, eye.pos)), TransformToParentVec(eye, Vec(0, 0, -1))) < -0.3 and math.random() < 0.08 then go = true end
 				end
 			end
@@ -763,7 +776,7 @@ function spGoal(s)
 		return nil
 	elseif st == "hunt" then
 		if targetOk(s) and t - s.knownT < 1 then
-			local feet = GetPlayerTransform(s.target).pos
+			local feet = Prey.feet(s.target)
 			if not s.goal or dist(s.goal, feet) > 1.2 then s.goal = dwGround(feet) or feet end
 			return s.goal
 		end
@@ -1098,7 +1111,7 @@ function spLeap(s, p)
 	local from = VecAdd(s.pos, VecScale(s.n, 0.25))
 	local d = dist(c, from)
 	local T = math.max(0.28, math.min(0.65, d / 13))
-	local lead = VecAdd(c, VecScale(GetPlayerVelocity(p), T * 0.6))
+	local lead = VecAdd(c, VecScale(Prey.vel(p), T * 0.6))
 	local v = VecScale(VecSub(lead, from), 1 / T)
 	v[2] = v[2] + 0.5 * DW_GRAV * T
 	s.pos = from
@@ -1109,14 +1122,12 @@ function spLeap(s, p)
 end
 
 function spBite(s, p, dmg)
-	SetPlayerHealth(math.max(0, GetPlayerHealth(p) - dmg), p)
-	local push = tangent(VecSub(dwChest(p), s.pos), Vec(0, 1, 0)) or Vec(0, 0, 0)
-	SetPlayerVelocity(VecAdd(GetPlayerVelocity(p), VecAdd(VecScale(push, 3.5), Vec(0, 1.5, 0))), p)
+	local killed = Prey.hurt(p, dmg, s.pos)
 	s.ev.bite = s.ev.bite + 1
 	s.fangs = 1
 	s.biteCd = now() + rnd(0.9, 1.4)
 	s.bites = (s.bites or 0) + 1
-	if GetPlayerHealth(p) <= 0 then
+	if killed then
 		s.target = 0
 		spRetreat(s)                                                 -- (it has fed: back into the dark)
 	elseif math.random() < 0.3 then
@@ -1155,8 +1166,8 @@ function spAir(s, dt)
 	a.vel = VecAdd(a.vel, Vec(0, -DW_GRAV * dt, 0))
 	local d = VecScale(a.vel, dt)
 	local l = vlen(d)
-	if a.kind == "leap" and not a.bit and a.target and IsPlayerValid(a.target) and GetPlayerHealth(a.target) > 0
-		and GetPlayerVehicle(a.target) == 0 and dist(s.pos, dwChest(a.target)) < 1.3 then
+	if a.kind == "leap" and not a.bit and a.target and Prey.ok(a.target)
+		and not Prey.inVehicle(a.target) and dist(s.pos, dwChest(a.target)) < 1.3 then
 		a.bit = true
 		a.vel = VecScale(a.vel, 0.25)
 		spBite(s, a.target, LEAP_DMG)
@@ -1215,7 +1226,7 @@ function spAct(s, dt)
 			local from = VecAdd(VecAdd(s.pos, VecScale(s.fwd, 0.6)), VecScale(s.n, 0.25))
 			local c = dwChest(p)
 			local T = dist(c, from) / SHOT_SPEED
-			local aim = VecAdd(c, VecScale(GetPlayerVelocity(p), T * rnd(0.6, 1.0)))
+			local aim = VecAdd(c, VecScale(Prey.vel(p), T * rnd(0.6, 1.0)))
 			aim = VecAdd(aim, Vec(rnd(-0.35, 0.35), rnd(-0.3, 0.2), rnd(-0.35, 0.35)))
 			local v = VecScale(VecSub(aim, from), 1 / math.max(0.05, T))
 			v[2] = v[2] + 0.5 * SHOT_G * T
@@ -1241,7 +1252,7 @@ function spAttack(s)
 	local p = s.target
 	local c = dwChest(p)
 	local d = dist(c, s.pos)
-	local veh = GetPlayerVehicle(p) ~= 0
+	local veh = Prey.inVehicle(p)
 	if d < BITE_R and t > s.biteCd and not veh then
 		spBite(s, p, BITE_DMG)
 		return s.state ~= "hunt"
@@ -1394,6 +1405,7 @@ function Spider.serverInit()
 	dwList = {}
 	dwHitShapes = {}
 	dwNextId = 1
+	dwStrikeSeen = nil
 	dwSeq = 0
 	dwPubT = 0
 	dwSenseT = 0
@@ -1507,11 +1519,13 @@ function dwHearChat()
 end
 
 function Spider.serverTick(dt)
+	Prey.dirty()
 	local t = now()
 	SNav.tick()
 	dwSpawnTick()
 	if math.floor(t * 10) ~= math.floor((t - dt) * 10) then dwSpawnMenu() end
 	dwTakeHits()
+	dwTakeStrikes()
 	dwTakeApiDamage()
 	-- GetLastSound is the loudest sound of the last frame only: listen every frame, keep the loudest until the senses
 	local sv, sp = GetLastSound()

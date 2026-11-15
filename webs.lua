@@ -149,7 +149,7 @@ function wbTouch(w, feet)
 	return VecLength(lat) < w.r
 end
 
-function wbFeet(p) return GetPlayerTransform(p).pos end
+function wbFeet(p) return Prey.feet(p) end
 
 -- a shot lands: a patch where it hit
 local function land(s, p, n)
@@ -166,8 +166,8 @@ local function shotStep(s, dt)
 	if l < 1e-5 then return false end
 	local dir = VecScale(d, 1 / l)
 	-- a player in the way: wrapped, and a web at their feet
-	for _, p in ipairs(GetAllPlayers()) do
-		if GetPlayerHealth(p) > 0 and GetPlayerVehicle(p) == 0 then
+	for _, p in ipairs(Prey.all()) do
+		if not Prey.inVehicle(p) then
 			local feet = wbFeet(p)
 			local chest = VecAdd(feet, Vec(0, 1.0, 0))
 			local rel = VecSub(chest, s.pos)
@@ -200,6 +200,7 @@ local function shotStep(s, dt)
 end
 
 function Webs.serverUpdate(dt)
+	Prey.dirty()
 	for i = #wbShots, 1, -1 do
 		if not shotStep(wbShots[i], dt) then
 			table.remove(wbShots, i)
@@ -208,7 +209,7 @@ function Webs.serverUpdate(dt)
 	end
 	-- the web holds on: slowed players' speed is capped (the walking speed alone leaves jumps and slides)
 	for p, lvl in pairs(wbLevel) do
-		if lvl > 0 and IsPlayerValid(p) and GetPlayerHealth(p) > 0 and GetPlayerVehicle(p) == 0 then
+		if lvl > 0 and Prey.isPlayer(p) and IsPlayerValid(p) and GetPlayerHealth(p) > 0 and GetPlayerVehicle(p) == 0 then
 			local v = GetPlayerVelocity(p)
 			local h = math.sqrt(v[1] * v[1] + v[3] * v[3])
 			local cap, up = SLOW_CAP[lvl], SLOW_JUMP[lvl]
@@ -247,7 +248,7 @@ local function publishShots()
 		S[k + 4], S[k + 5], S[k + 6] = s.vel[1], s.vel[2], s.vel[3]
 	end
 	for p, lvl in pairs(wbLevel) do
-		if lvl > 0 then slow[#slow + 1] = p; slow[#slow + 1] = lvl end
+		if lvl > 0 and Prey.isPlayer(p) then slow[#slow + 1] = p; slow[#slow + 1] = lvl end
 	end
 	local e = wbEv
 	shared.dwShots = {n = wbShotSeq, t = now(), s = S, slow = slow, splat = e.splat, sx = e.sx, sy = e.sy, sz = e.sz,
@@ -255,6 +256,7 @@ local function publishShots()
 end
 
 function Webs.serverTick(dt)
+	Prey.dirty()
 	local t = now()
 	-- old webs and lines go
 	for i = #wbPatches, 1, -1 do
@@ -276,9 +278,9 @@ function Webs.serverTick(dt)
 		end
 	end
 	-- who is held
-	for _, p in ipairs(GetAllPlayers()) do
+	for _, p in ipairs(Prey.all()) do
 		local lvl = 0
-		if GetPlayerHealth(p) > 0 and GetPlayerVehicle(p) == 0 then
+		if not Prey.inVehicle(p) then
 			if (wbWrap[p] or 0) > t then
 				lvl = 2
 			else
@@ -303,9 +305,16 @@ function Webs.serverTick(dt)
 				wbEv.tx, wbEv.ty, wbEv.tz = f[1], f[2] + 0.5, f[3]
 			end
 		end
-		if lvl > 0 then SetPlayerParam("walkingSpeed", SLOW_WALK[lvl], p) end   -- (holds for one frame: set every tick)
+		if lvl > 0 then                                                  -- (holds for one frame: set every tick)
+			if Prey.isPlayer(p) then SetPlayerParam("walkingSpeed", SLOW_WALK[lvl], p) else Prey.slow(p, SLOW_WALK[lvl]) end
+		end
 	end
-	for p in pairs(wbLevel) do if not IsPlayerValid(p) then wbLevel[p] = nil; wbWrap[p] = nil end end
+	for p, lv in pairs(wbLevel) do
+		if not Prey.ok(p) then                                          -- (dead or gone: no longer held)
+			if lv > 0 then wbShotDirty = true end
+			wbLevel[p] = nil; wbWrap[p] = nil
+		end
+	end
 	-- how bright the webs are drawn: sprites are unlit, so by the sky (a dark map: dim webs)
 	if t - wbBrightT > 5 then
 		wbBrightT = t
