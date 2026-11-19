@@ -1,3 +1,2 @@
 #Creatures
 prefab/spawner.xml : Creatures/Dreadweaver
-prefab/asset.xml : Creatures/Dreadweaver (works without the mod)

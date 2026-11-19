@@ -226,7 +226,6 @@ function dwVillagersTick()
 end
 
 function dwPublishHitpoints()
-	if DW_ASSET then return end                                    -- (one registry key for all: the main script's)
 	local out = {}
 	for _, s in ipairs(dwList) do
 		if s.alive then
@@ -246,7 +245,6 @@ end
 local function finite(x) return x and x == x and x > -1e9 and x < 1e9 end
 
 function dwTakeApiDamage()
-	if DW_ASSET then return end
 	local q = GetString("dreadweaver.damage")
 	if q == "" then return end
 	SetString("dreadweaver.damage", "")
@@ -1407,10 +1405,6 @@ function Spider.serverInit()
 	dwList = {}
 	dwHitShapes = {}
 	dwNextId = 1
-	if DW_ASSET then                                               -- (several scripts at once: ids that do not collide)
-		dwNextId = 1000 + GetInt("dreadweaver.assetseq")
-		SetInt("dreadweaver.assetseq", GetInt("dreadweaver.assetseq") + 1)
-	end
 	dwStrikeSeen = nil
 	dwSeq = 0
 	dwPubT = 0
@@ -1423,17 +1417,15 @@ function Spider.serverInit()
 	dwChat = {}
 	dwSaid = nil
 	dwLo, dwHi = Vec(-200, -50, -200), Vec(200, 100, 200)
-	if not DW_ASSET then
-		SetString("dreadweaver.hitpoints", "")
-		SetString("dreadweaver.damage", "")
-	end
+	SetString("dreadweaver.hitpoints", "")
+	SetString("dreadweaver.damage", "")
 	dwVillagersInit()
 	local c = GetInt("savegame.mod.count")
 	if c < 1 then c = 1 end
 	DW_COUNT = math.min(3, c)
 	DW_AUTO = not GetBool("savegame.mod.autooff")                  -- off: only the spawn menu's markers make spiders
 	if not DW_AUTO then DW_COUNT = 0 end
-	if not DW_ASSET then for _, b in ipairs(FindBodies("dreadweaverhit", true) or {}) do Delete(b) end end
+	for _, b in ipairs(FindBodies("dreadweaverhit", true) or {}) do Delete(b) end
 	SNav.init({cell = 0.5, reach = 0.9, clear = 0.2, ride = DW_RIDE, budget = 400, maxNodes = 3000, mask = DW_MASK})
 	for i = 1, DW_COUNT do dwRespawnAt[#dwRespawnAt + 1] = SPAWN_DELAY + (i - 1) * 8 end
 	shared.dw = {n = 0, t = 0}
@@ -1472,8 +1464,7 @@ end
 function dwSpawnMenu()
 	local t = now()
 	local seen, marks = {}, {}
-	local tag = DW_ASSET and "dwasset" or "dreadweaverspawn"
-	for _, b in ipairs(FindBodies(tag, not DW_ASSET) or {}) do      -- (asset mode: only this script's own marker)
+	for _, b in ipairs(FindBodies("dreadweaverspawn", true) or {}) do
 		seen[b] = true
 		if not dwMarkT0[b] then
 			-- the spawn menu holds a PREVIEW of the prefab in front of the camera before the click (the game's
