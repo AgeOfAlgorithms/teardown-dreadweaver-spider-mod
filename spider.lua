@@ -1423,6 +1423,8 @@ function Spider.serverInit()
 	local c = GetInt("savegame.mod.count")
 	if c < 1 then c = 1 end
 	DW_COUNT = math.min(3, c)
+	DW_AUTO = not GetBool("savegame.mod.autooff")                  -- off: only the spawn menu's markers make spiders
+	if not DW_AUTO then DW_COUNT = 0 end
 	for _, b in ipairs(FindBodies("dreadweaverhit", true) or {}) do Delete(b) end
 	SNav.init({cell = 0.5, reach = 0.9, clear = 0.2, ride = DW_RIDE, budget = 400, maxNodes = 3000, mask = DW_MASK})
 	for i = 1, DW_COUNT do dwRespawnAt[#dwRespawnAt + 1] = SPAWN_DELAY + (i - 1) * 8 end
@@ -1544,7 +1546,7 @@ function Spider.serverTick(dt)
 			spBoxesMove(s)
 		elseif t - s.deadT > CORPSE_T then
 			table.remove(dwList, i)
-			dwRespawnAt[#dwRespawnAt + 1] = t + RESPAWN_T
+			if DW_AUTO then dwRespawnAt[#dwRespawnAt + 1] = t + RESPAWN_T end
 		end
 	end
 	if sense then dwHeard, dwChat = nil, {} end

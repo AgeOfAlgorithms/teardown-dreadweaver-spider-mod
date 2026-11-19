@@ -26,11 +26,11 @@ With [Proximity Comms](https://steamcommunity.com/sharedfiles/filedetails/?id=38
 Shoot it (the head hurts most), blow it up, hit it with a sledge. It bleeds green where you hit it. Hurt badly or quickly, it runs, hides, heals and comes back. Killed, another one arrives a couple of minutes later.
 
 ## Settings
-- **Options** in the Mod Manager: 1 to 3 on each map.
+- **Options** in the Mod Manager: 1 to 3 on each map, or switch spawning on its own **off** and place them yourself from the spawn menu.
 - The host can place more from the spawn menu (Creatures > Dreadweaver), up to 6. The marker lies for 7 seconds, counting down, before the spider comes out of it: time to carry it somewhere, or to get away.
 
 ## Multiplayer
-The host turns it on under Global mods. Each player's game draws the spider and its webs itself; the host runs the brain.
+The host turns it on under Global mods, and the host's options decide whether and how many spawn on their own. Each player's game draws the spider and its webs itself; the host runs the brain.
 
 ## Villagers
 With the [AI Villagers](https://steamcommunity.com/sharedfiles/filedetails/?id=3840579200) mod running, the villagers are prey too: the Dreadweaver sees, stalks, webs and bites them just like players, and they see it, fear it and run (or fight back).

@@ -3,12 +3,28 @@
 function draw()
 	local n = GetInt("savegame.mod.count")
 	if n < 1 then n = 1 end
-	UiTranslate(UiCenter(), 300)
+	local auto = not GetBool("savegame.mod.autooff")
+	UiTranslate(UiCenter(), 260)
 	UiAlign("center middle")
 	UiFont("bold.ttf", 48)
 	UiText("Dreadweaver")
-	UiTranslate(0, 90)
+	UiTranslate(0, 80)
 	UiFont("regular.ttf", 28)
+	UiText("Spawn on its own when a map loads")
+	UiTranslate(0, 55)
+	UiFont("bold.ttf", 36)
+	UiPush()
+	for i, on in ipairs({true, false}) do
+		UiPush()
+		UiTranslate((i - 1.5) * 150, 0)
+		if on == auto then UiColor(1, 0.4, 0.3) else UiColor(0.8, 0.8, 0.8) end
+		if UiTextButton(on and "On" or "Off", 120, 56) then SetBool("savegame.mod.autooff", not on) end
+		UiPop()
+	end
+	UiPop()
+	UiTranslate(0, 75)
+	UiFont("regular.ttf", 28)
+	if auto then UiColor(1, 1, 1) else UiColor(0.5, 0.5, 0.5) end
 	UiText("Dreadweavers on each map")
 	UiTranslate(0, 60)
 	UiFont("bold.ttf", 40)
@@ -16,7 +32,7 @@ function draw()
 	for i = 1, 3 do
 		UiPush()
 		UiTranslate((i - 2) * 110, 0)
-		if i == n then UiColor(1, 0.4, 0.3) else UiColor(0.8, 0.8, 0.8) end
+		if not auto then UiColor(0.4, 0.4, 0.4) elseif i == n then UiColor(1, 0.4, 0.3) else UiColor(0.8, 0.8, 0.8) end
 		if UiTextButton(tostring(i), 80, 60) then SetInt("savegame.mod.count", i) end
 		UiPop()
 	end
@@ -39,7 +55,7 @@ function draw()
 	UiTranslate(0, 70)
 	UiFont("regular.ttf", 22)
 	UiColor(0.8, 0.8, 0.8)
-	UiText("More can be placed from the spawn menu (up to 6).")
+	UiText("Placed from the spawn menu (Creatures > Dreadweaver), up to 6.")
 	UiTranslate(0, 100)
 	UiColor(1, 1, 1)
 	UiFont("bold.ttf", 32)
