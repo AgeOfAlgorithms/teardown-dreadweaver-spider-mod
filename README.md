@@ -29,6 +29,9 @@ Shoot it (the head hurts most), blow it up, hit it with a sledge. It bleeds gree
 - **Options** in the Mod Manager: 1 to 3 on each map, or switch spawning on its own **off** and place them yourself from the spawn menu.
 - The host can place more from the spawn menu (Creatures > Dreadweaver), up to 6. The marker lies for 7 seconds, counting down, before the spider comes out of it: time to carry it somewhere, or to get away.
 
+## Without enabling the mod (experimental)
+The spawn menu has a second entry, **Creatures > Dreadweaver (works without the mod)**. It carries its own copy of the spider, so one can be placed in the sandbox even when Dreadweaver is not enabled under Global mods. Each one is a separate spider with its own webs; it has no weapon API, no spawn limit and no Proximity Comms lures. Tested in single player; whether other players in multiplayer see it is not known yet.
+
 ## Multiplayer
 The host turns it on under Global mods, and the host's options decide whether and how many spawn on their own. Each player's game draws the spider and its webs itself; the host runs the brain.
 

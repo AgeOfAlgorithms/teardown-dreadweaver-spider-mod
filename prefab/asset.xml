@@ -1,0 +1,9 @@
+<prefab version="1.6.0">
+	<group name="instance=MOD/prefab/asset.xml" pos="0 0 0" rot="0 0 0">
+		<script file="MOD/asset.lua">
+			<body tags="dwasset" pos="0 0.3 0" dynamic="true">
+				<voxbox tags="dwasset" pos="-0.25 -0.25 -0.25" size="5 5 5" material="plastic" color="0.1 0.02 0.02"/>
+			</body>
+		</script>
+	</group>
+</prefab>
